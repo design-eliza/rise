@@ -142,7 +142,19 @@
   <section class="card">
     <h2>Wake-up reminders</h2>
 
-    <p style="margin:0 0 6px"><b>Option A · Alarm opens Rise</b> <span class="sub">(best)</span></p>
+    <p style="margin:0 0 6px"><b>Option A · Morning pep-talk notification</b> <span class="sub">(no need to open Rise)</span></p>
+    <p class="sub" style="margin:0 0 6px;font-size:14px">Your iPhone sends a new motivational message at your wake-up time every day.</p>
+    <ol class="sub steps">
+      <li>Open <b>Shortcuts</b> → <b>Automation</b> → <b>+</b> → <b>Time of Day</b>. Pick your wake-up time, <b>Daily</b>, then <b>Run Immediately</b> → <b>Next</b>.</li>
+      <li>Tap <b>New Blank Automation</b>, then add these actions in order:<br>
+        <b>Get Contents of URL</b> (paste the link below)<br>
+        → <b>Split Text</b> (by New Lines)<br>
+        → <b>Get Item from List</b> (Random Item)<br>
+        → <b>Show Notification</b> (set the text to "Item from List")</li>
+    </ol>
+    <button id="copyQuotesBtn" style="width:100%;margin-bottom:16px">📋 Copy messages link</button>
+
+    <p style="margin:0 0 6px"><b>Option B · Alarm opens Rise</b></p>
     <ol class="sub steps">
       <li>Set your usual alarm in the Clock app.</li>
       <li>Open the <b>Shortcuts</b> app → <b>Automation</b> → <b>+</b> → <b>Alarm</b> → <b>Is Stopped</b>. Choose <b>Run Immediately</b>.</li>
@@ -150,7 +162,7 @@
     </ol>
     <button id="copyBtn" style="width:100%;margin-bottom:16px">📋 Copy Rise link</button>
 
-    <p style="margin:0 0 6px"><b>Option B · Calendar alert</b></p>
+    <p style="margin:0 0 6px"><b>Option C · Calendar alert</b></p>
     <p class="sub" style="margin:0 0 10px">Adds a daily event with an alert at <b id="remLabel"></b> to your iPhone's Calendar app.</p>
     <button class="primary" id="icsBtn" style="width:100%">📅 Add daily alert to Calendar</button>
     <p class="sub" style="font-size:12px;margin-top:10px">If nothing happens, open Rise in Safari and tap it there. If you change your wake-up time, add the alert again and delete the old event.</p>
@@ -420,6 +432,11 @@ const calStamp = d => `${dkey(d).replace(/-/g, '')}T${String(d.getHours()).padSt
 const REM_TITLE = '☀️ Rise: get up and win the morning';
 const remDesc = () => `${S.why ? S.why + '\n\n' : ''}Get up and win the morning.${appUrl() ? '\nOpen Rise: ' + appUrl() : ''}`;
 const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+$('copyQuotesBtn').onclick = async () => {
+  const url = (appUrl() || 'https://design-eliza.github.io/rise/').replace(/index\.html$/, '') + 'wake.txt';
+  try { await navigator.clipboard.writeText(url); toast('Link copied. Paste it into Shortcuts'); }
+  catch { prompt('Copy this link:', url); }
+};
 $('copyBtn').onclick = async () => {
   const url = appUrl() || 'https://design-eliza.github.io/rise/';
   try { await navigator.clipboard.writeText(url); toast('Link copied. Paste it into Shortcuts'); }

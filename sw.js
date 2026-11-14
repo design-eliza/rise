@@ -1,5 +1,5 @@
 // Caches the app so it opens instantly and works offline.
-const CACHE = 'rise-v3';
+const CACHE = 'rise-v4';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 
 self.addEventListener('install', e => {
