@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14110f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rise">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Rise</title>
+<style>
+  :root {
+    --bg: #14110f; --card: #1f1a17; --line: #322a25; --text: #f4ede6; --muted: #a89a8f;
+    --sun: #ff9f43; --sun2: #ff6b6b; --good: #5fd39a; --bad: #e0675f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.45;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  main { max-width: 480px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 28px; margin: 4px 0 2px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; }
+  .sub { color: var(--muted); margin: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-top: 14px; }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .between { justify-content: space-between; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; text-align: center; }
+  .stat b { display: block; font-size: 26px; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  button {
+    font: inherit; border: 0; border-radius: 12px; padding: 12px 16px; cursor: pointer;
+    background: var(--line); color: var(--text);
+  }
+  button.primary { background: linear-gradient(135deg, var(--sun), var(--sun2)); color: #1a0f08; font-weight: 700; }
+  button.big { width: 100%; padding: 18px; font-size: 18px; }
+  button:disabled { opacity: .45; cursor: default; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { padding: 9px 12px; border-radius: 999px; background: var(--line); font-size: 14px; }
+  .chip.on { background: var(--sun); color: #1a0f08; font-weight: 600; }
+  input[type=text], input[type=time], textarea {
+    font: inherit; width: 100%; background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .why { font-size: 17px; font-style: italic; border-left: 3px solid var(--sun); padding-left: 12px; margin: 0; }
+  .done-badge { color: var(--good); font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .day { aspect-ratio: 1; border-radius: 6px; background: var(--line); font-size: 10px; color: var(--muted);
+         display: flex; align-items: center; justify-content: center; }
+  .day.l1 { background: #6b4a2a; color: var(--text); }
+  .day.l2 { background: #b8702f; color: var(--text); }
+  .day.l3 { background: var(--sun); color: #1a0f08; font-weight: 700; }
+  .day.today { outline: 2px solid var(--text); }
+  .legend { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .quote { color: var(--muted); font-size: 14px; margin-top: 14px; text-align: center; }
+  .hidden { display: none !important; }
+  /* workout overlay */
+  #wo { position: fixed; inset: 0; background: var(--bg); z-index: 10; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; padding: 24px; text-align: center; }
+  #wo .phase { color: var(--muted); text-transform: uppercase; letter-spacing: .1em; font-size: 13px; }
+  #wo .name { font-size: 32px; font-weight: 700; margin: 8px 0; }
+  #wo .clock { font-size: 96px; font-weight: 800; font-variant-numeric: tabular-nums;
+               background: linear-gradient(135deg, var(--sun), var(--sun2)); -webkit-background-clip: text; color: transparent; }
+  #wo .next { color: var(--muted); min-height: 1.4em; }
+  .bar { width: 100%; max-width: 360px; height: 6px; background: var(--line); border-radius: 3px; margin: 20px 0; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--sun); width: 0; transition: width .3s; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--good); color: #062014;
+           padding: 12px 18px; border-radius: 12px; font-weight: 600; z-index: 20; }
+</style>
+</head>
+<body>
+<main>
+  <p class="sub" id="date"></p>
+  <h1 id="greet">Good morning</h1>
+
+  <div class="stats">
+    <div class="stat"><b id="sStreak">0</b><span>day streak 🔥</span></div>
+    <div class="stat"><b id="sBest">0</b><span>best streak</span></div>
+    <div class="stat"><b id="sTotal">0</b><span>wins total</span></div>
+  </div>
+
+  <!-- Why -->
+  <section class="card" id="whyCard">
+    <h2>Why you get up</h2>
+    <p class="why" id="whyText"></p>
+    <div id="whyEdit" class="hidden">
+      <textarea id="whyInput" placeholder="e.g. I want to feel strong and proud of how I spend my mornings."></textarea>
+      <div class="row" style="margin-top:8px"><button class="primary" id="whySave">Save</button></div>
+    </div>
+    <button id="whyBtn" style="margin-top:10px;font-size:13px;padding:6px 10px">Edit</button>
+  </section>
+
+  <!-- Step 1: wake -->
+  <section class="card">
+    <div class="row between"><h2>1 · Rise</h2><span class="sub" style="font-size:13px">Target <span id="targetLabel"></span></span></div>
+    <button class="primary big" id="wakeBtn">☀️ I'm up!</button>
+    <p id="wakeMsg" class="hidden"></p>
+  </section>
+
+  <!-- Step 2: mission -->
+  <section class="card">
+    <h2>2 · Today's win</h2>
+    <div id="missionPick">
+      <div class="chips" id="chips"></div>
+      <input type="text" id="missionInput" placeholder="Or write your own…" style="margin-top:10px">
+      <button class="primary big" id="commitBtn" style="margin-top:10px">Commit to it</button>
+    </div>
+    <div id="missionSet" class="hidden">
+      <p style="font-size:20px;margin:0 0 12px" id="missionText"></p>
+      <div class="row">
+        <button class="primary" id="doneBtn" style="flex:1">✅ Done</button>
+        <button id="changeBtn">Change</button>
+      </div>
+      <p id="missionDone" class="done-badge hidden"></p>
+    </div>
+  </section>
+
+  <!-- Workout -->
+  <section class="card">
+    <h2>Quick-start workout</h2>
+    <p class="sub" style="margin-bottom:12px">No equipment. 12 moves × 30 seconds, 10 seconds rest between. About 8 minutes. Starting is the hard part, so just press go.</p>
+    <button class="primary big" id="woStart">▶ Start 8-minute workout</button>
+  </section>
+
+  <!-- History -->
+  <section class="card">
+    <h2>Last 4 weeks</h2>
+    <div class="grid" id="grid"></div>
+    <p class="legend">Dim = got up · Medium = committed to a win · Bright = won the morning</p>
+  </section>
+
+  <!-- Reminders -->
+  <section class="card">
+    <h2>Daily wake-up reminder</h2>
+    <p class="sub" style="margin-bottom:12px">Add a repeating event at <b id="remLabel"></b> to your phone's calendar. Your phone will notify you every morning, even when this app is closed.</p>
+    <div class="row">
+      <button class="primary" id="gcalBtn" style="flex:1">Google Calendar</button>
+      <button class="primary" id="icsBtn" style="flex:1">iPhone / Outlook</button>
+    </div>
+    <p class="sub" style="font-size:12px;margin-top:10px">If you change your wake-up target, add the reminder again and delete the old one.</p>
+  </section>
+
+  <!-- Settings -->
+  <section class="card">
+    <h2>Settings</h2>
+    <label class="sub" for="target">Wake-up target</label>
+    <input type="time" id="target" style="margin:6px 0 12px">
+    <div class="row">
+      <button id="notifyBtn" style="flex:1">🔔 Enable reminder</button>
+      <button id="exportBtn">Back up</button>
+    </div>
+    <p class="sub" style="font-size:12px;margin-top:10px">Everything stays on this device. "Enable reminder" only works while Rise is open, so use the calendar reminder above to get notified every morning.</p>
+  </section>
+
+  <p class="quote" id="quote"></p>
+</main>
+
+<!-- Workout overlay -->
+<div id="wo" class="hidden">
+  <div class="phase" id="woPhase">Get ready</div>
+  <div class="name" id="woName"></div>
+  <div class="clock" id="woClock">5</div>
+  <div class="next" id="woNext"></div>
+  <div class="bar"><i id="woBar"></i></div>
+  <div class="row">
+    <button id="woPause">Pause</button>
+    <button id="woSkip">Skip</button>
+    <button id="woQuit">Quit</button>
+  </div>
+</div>
+
+<script>
+const KEY = 'rise.v1';
+const MISSIONS = ['💪 Workout', '🏃 Run / walk', '🧘 Stretch / yoga', '🧠 1 hour deep work', '📚 Read 20 pages', '🧹 Tidy one space', '✍️ Journal', '🎯 Hardest task first'];
+const QUOTES = [
+  "You don't have to feel like it. You just have to start.",
+  "Motivation follows action, not the other way around.",
+  "Win the morning, win the day.",
+  "Two minutes of doing beats an hour of thinking about doing.",
+  "Don't break the chain.",
+  "Your future self is watching. Make them proud.",
+  "Small wins, every day, add up to something huge.",
+  "Discipline is choosing what you want most over what you want now.",
+  "The bed will still be there tonight.",
+  "Done is better than perfect.",
+];
+const WORKOUT = ['Jumping jacks', 'Wall sit', 'Push-ups', 'Crunches', 'Step-ups (chair)', 'Squats',
+  'Tricep dips (chair)', 'Plank', 'High knees', 'Lunges', 'Push-up + rotation', 'Side plank'];
+const WORK = 30, REST = 10, READY = 5;
+
+const $ = id => document.getElementById(id);
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
+let S = Object.assign({ target: '06:30', why: '', days: {} }, load());
+const save = () => localStorage.setItem(KEY, JSON.stringify(S));
+
+const dkey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const todayKey = () => dkey(new Date());
+const today = () => (S.days[todayKey()] ||= {});
+const level = d => !d ? 0 : d.done ? 3 : d.mission ? 2 : d.wake ? 1 : 0;
+const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const fmtTime = t => { const [h, m] = t.split(':').map(Number); return `${(h % 12) || 12}:${String(m).padStart(2,'0')} ${h < 12 ? 'AM' : 'PM'}`; };
+
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+}
+
+function streaks() {
+  // A day counts toward the streak when you finished your win.
+  const keys = Object.keys(S.days).filter(k => S.days[k].done).sort();
+  let best = 0, run = 0, prev = null;
+  for (const k of keys) {
+    const d = new Date(k + 'T12:00');
+    run = prev && (d - prev) / 864e5 === 1 ? run + 1 : 1;
+    best = Math.max(best, run); prev = d;
+  }
+  // current streak: count back from today (or yesterday if today isn't done yet)
+  let cur = 0; const d = new Date();
+  if (!S.days[dkey(d)]?.done) d.setDate(d.getDate() - 1);
+  while (S.days[dkey(d)]?.done) { cur++; d.setDate(d.getDate() - 1); }
+  return { cur, best, total: keys.length };
+}
+
+let picked = null;
+function render() {
+  const now = new Date(), t = S.days[todayKey()] || {};
+  const h = now.getHours();
+  $('date').textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  $('greet').textContent = h < 12 ? 'Good morning ☀️' : h < 18 ? 'Good afternoon' : 'Good evening 🌙';
+
+  const st = streaks();
+  $('sStreak').textContent = st.cur; $('sBest').textContent = st.best; $('sTotal').textContent = st.total;
+
+  $('whyText').textContent = S.why || 'Write down why this matters to you. You\'ll see it every morning.';
+  $('targetLabel').textContent = fmtTime(S.target); $('remLabel').textContent = fmtTime(S.target);
+  $('target').value = S.target;
+
+  if (t.wake) {
+    $('wakeBtn').disabled = true; $('wakeBtn').textContent = `Up at ${fmtTime(t.wake)}`;
+    const diff = toMin(t.wake) - toMin(S.target);
+    $('wakeMsg').classList.remove('hidden');
+    $('wakeMsg').textContent = diff <= 0 ? `🌅 ${-diff} min early. Great start.` :
+      diff <= 15 ? '👍 Right on time. Keep it going.' : `You're up and that counts. Tomorrow, aim for ${fmtTime(S.target)}.`;
+  } else {
+    $('wakeBtn').disabled = false; $('wakeBtn').textContent = "☀️ I'm up!"; $('wakeMsg').classList.add('hidden');
+  }
+
+  $('chips').innerHTML = '';
+  MISSIONS.forEach(m => {
+    const c = document.createElement('button'); c.className = 'chip' + (picked === m ? ' on' : ''); c.textContent = m;
+    c.onclick = () => { picked = picked === m ? null : m; $('missionInput').value = ''; render(); };
+    $('chips').appendChild(c);
+  });
+  const hasMission = !!t.mission;
+  $('missionPick').classList.toggle('hidden', hasMission);
+  $('missionSet').classList.toggle('hidden', !hasMission);
+  if (hasMission) {
+    $('missionText').textContent = t.mission;
+    $('doneBtn').classList.toggle('hidden', !!t.done); $('changeBtn').classList.toggle('hidden', !!t.done);
+    $('missionDone').classList.toggle('hidden', !t.done);
+    if (t.done) $('missionDone').textContent = `🏆 Morning won at ${fmtTime(t.done)}. See you tomorrow.`;
+  }
+
+  const g = $('grid'); g.innerHTML = '';
+  const start = new Date(); start.setDate(start.getDate() - 27);
+  for (let i = 0; i < 28; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    const k = dkey(d), cell = document.createElement('div');
+    cell.className = `day l${level(S.days[k])}` + (k === todayKey() ? ' today' : '');
+    cell.textContent = d.getDate(); cell.title = k + (S.days[k]?.mission ? ` · ${S.days[k].mission}` : '');
+    g.appendChild(cell);
+  }
+
+  const dayNum = Math.floor(Date.now() / 864e5);
+  $('quote').textContent = `“${QUOTES[dayNum % QUOTES.length]}”`;
+}
+
+const hhmm = () => { const n = new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; };
+
+$('wakeBtn').onclick = () => { today().wake = hhmm(); save(); render(); toast('You\'re up! Now pick your win 👇'); };
+$('missionInput').oninput = () => { if ($('missionInput').value) { picked = null; render(); } };
+$('commitBtn').onclick = () => {
+  const m = $('missionInput').value.trim() || picked;
+  if (!m) return toast('Pick something, anything small counts');
+  const t = today(); t.mission = m; t.wake ||= hhmm(); save(); picked = null; $('missionInput').value = ''; render();
+};
+$('changeBtn').onclick = () => { delete today().mission; save(); render(); };
+$('doneBtn').onclick = () => { today().done = hhmm(); save(); render(); celebrate(); };
+$('whyBtn').onclick = () => { $('whyInput').value = S.why; $('whyEdit').classList.toggle('hidden'); };
+$('whySave').onclick = () => { S.why = $('whyInput').value.trim(); save(); $('whyEdit').classList.add('hidden'); render(); };
+$('target').onchange = e => { S.target = e.target.value || '06:30'; save(); render(); scheduleReminder(); };
+$('exportBtn').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }));
+  a.download = `rise-backup-${todayKey()}.json`; a.click();
+};
+
+function celebrate() {
+  const st = streaks();
+  const msg = st.cur >= 7 ? `🔥 ${st.cur} days straight. You're unstoppable!` :
+    st.cur > 1 ? `🔥 ${st.cur}-day streak! Keep the chain alive.` : '🏆 Morning won! That\'s day 1.';
+  toast(msg); beep(880, .15); setTimeout(() => beep(1320, .25), 160);
+}
+
+// ---- reminder (fires only while page is open) ----
+let remTimer;
+function scheduleReminder() {
+  clearTimeout(remTimer);
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const n = new Date(), at = new Date(); const [h, m] = S.target.split(':').map(Number);
+  at.setHours(h, m, 0, 0); if (at <= n) at.setDate(at.getDate() + 1);
+  remTimer = setTimeout(() => {
+    notify('Rise ☀️', S.why || 'Time to get up and win the morning.');
+    beep(660, .4); scheduleReminder();
+  }, at - n);
+}
+$('notifyBtn').onclick = async () => {
+  if (!('Notification' in window)) return toast('Notifications not supported here');
+  const p = await Notification.requestPermission();
+  toast(p === 'granted' ? `Reminder set for ${fmtTime(S.target)}` : 'Notifications blocked');
+  scheduleReminder();
+};
+
+// ---- sound ----
+let ac;
+function beep(freq = 880, dur = .12) {
+  try {
+    ac ||= new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.value = freq; g.gain.setValueAtTime(.2, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + dur);
+    o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + dur);
+  } catch {}
+}
+
+// ---- workout ----
+let wo = null, wakeLock = null;
+function buildSteps() {
+  const s = [{ phase: 'Get ready', name: WORKOUT[0], secs: READY }];
+  WORKOUT.forEach((n, i) => {
+    s.push({ phase: `Move ${i + 1} of ${WORKOUT.length}`, name: n, secs: WORK, work: true });
+    if (i < WORKOUT.length - 1) s.push({ phase: 'Rest', name: 'Breathe', secs: REST, nextName: WORKOUT[i + 1] });
+  });
+  return s;
+}
+function woShow() {
+  const st = wo.steps[wo.i];
+  $('woPhase').textContent = st.phase; $('woName').textContent = st.name; $('woClock').textContent = wo.left;
+  $('woNext').textContent = st.nextName ? `Next: ${st.nextName}` : st.work && wo.steps[wo.i + 2] ? `Then: ${wo.steps[wo.i + 2].name}` : '';
+  $('woBar').style.width = `${(wo.i / wo.steps.length) * 100}%`;
+}
+function woNextStep() {
+  wo.i++;
+  if (wo.i >= wo.steps.length) return woFinish();
+  wo.left = wo.steps[wo.i].secs; beep(wo.steps[wo.i].work ? 1040 : 520, .25); woShow();
+}
+function woTick() {
+  if (wo.paused) return;
+  wo.left--;
+  if (wo.left <= 3 && wo.left > 0) beep(700, .08);
+  if (wo.left <= 0) woNextStep(); else woShow();
+}
+async function woStart() {
+  beep(1, .01); // unlock audio on iOS
+  wo = { steps: buildSteps(), i: 0, paused: false }; wo.left = wo.steps[0].secs;
+  $('wo').classList.remove('hidden'); $('woPause').textContent = 'Pause'; woShow();
+  wo.timer = setInterval(woTick, 1000);
+  try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {}
+}
+function woStop() {
+  clearInterval(wo?.timer); wo = null; $('wo').classList.add('hidden');
+  wakeLock?.release?.(); wakeLock = null;
+}
+function woFinish() {
+  woStop();
+  const t = today(); t.wake ||= hhmm();
+  if (!t.mission) t.mission = '💪 8-minute workout';
+  if (!t.done) { t.done = hhmm(); save(); render(); celebrate(); } else { save(); render(); toast('Workout complete 💪'); }
+}
+$('woStart').onclick = woStart;
+$('woPause').onclick = () => { wo.paused = !wo.paused; $('woPause').textContent = wo.paused ? 'Resume' : 'Pause'; };
+$('woSkip').onclick = woNextStep;
+$('woQuit').onclick = woStop;
+
+// ---- notifications via service worker (needed on Android / installed apps) ----
+let swReg = null;
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').then(r => swReg = r).catch(() => {});
+}
+function notify(title, body) {
+  const opts = { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'rise' };
+  if (swReg?.showNotification) swReg.showNotification(title, opts);
+  else try { new Notification(title, opts); } catch {}
+}
+
+// ---- calendar reminders ----
+const appUrl = () => location.protocol.startsWith('http') ? location.href.split(/[?#]/)[0] : '';
+function nextWake() {
+  const [h, m] = S.target.split(':').map(Number), d = new Date(); d.setHours(h, m, 0, 0);
+  if (d <= new Date()) d.setDate(d.getDate() + 1);
+  return d;
+}
+const calStamp = d => `${dkey(d).replace(/-/g, '')}T${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}00`;
+const REM_TITLE = '☀️ Rise: get up and win the morning';
+const remDesc = () => `${S.why ? S.why + '\n\n' : ''}Get up and win the morning.${appUrl() ? '\nOpen Rise: ' + appUrl() : ''}`;
+const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+$('gcalBtn').onclick = () => {
+  const s = nextWake(), e = new Date(s.getTime() + 15 * 60000);
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: REM_TITLE, dates: `${calStamp(s)}/${calStamp(e)}`,
+    ctz: tz(), recur: 'RRULE:FREQ=DAILY', details: remDesc() });
+  window.open('https://calendar.google.com/calendar/render?' + q, '_blank');
+};
+$('icsBtn').onclick = () => {
+  const s = nextWake(), e = new Date(s.getTime() + 15 * 60000);
+  const esc = t => t.replace(/[\;,]/g, c => '\\' + c).replace(/\n/g, '\\n');
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Rise//EN', 'BEGIN:VEVENT',
+    `UID:rise-${Date.now()}@rise`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
+    `DTSTART;TZID=${tz()}:${calStamp(s)}`, `DTEND;TZID=${tz()}:${calStamp(e)}`, 'RRULE:FREQ=DAILY',
+    `SUMMARY:${esc(REM_TITLE)}`, `DESCRIPTION:${esc(remDesc())}`, ...(appUrl() ? [`URL:${appUrl()}`] : []),
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Time to rise ☀️', 'TRIGGER:PT0M', 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+  a.download = 'rise-reminder.ics'; a.click();
+};
+
+render(); scheduleReminder();
+setInterval(render, 60_000); // roll over at midnight
+</script>
+</body>
+</html>
